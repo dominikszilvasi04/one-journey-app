@@ -177,12 +177,12 @@ export default function MapHomeScreen() {
           />
         ))}
       </MapView>
-      <TouchableOpacity style={[styles.filterButton, { top: insets.top + 10 }]} onPress={() => setIsFilterVisible(true)}>
+      <TouchableOpacity style={[styles.filterButton, { bottom: insets.bottom + 20 }]} onPress={() => setIsFilterVisible(true)}>
         <Ionicons name="menu" size={28} color="black" />
       </TouchableOpacity>
       <Modal visible={isFilterVisible} transparent animationType="fade" onRequestClose={() => setIsFilterVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsFilterVisible(false)}>
-          <View style={[styles.filterMenu, { marginTop: insets.top }]}>
+          <View style={[styles.filterMenu, { marginBottom: insets.bottom + 80 }]}>
             <Text style={styles.filterTitle}>Transport Filters</Text>
             {['All', 'Luas', 'Train'].map(f => (
               <TouchableOpacity key={f} style={styles.filterItem} onPress={() => { setCurrentFilter(f); setIsFilterVisible(false); }}>
@@ -240,8 +240,8 @@ export default function MapHomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { width: '100%', height: '100%' },
-  filterButton: { position: 'absolute', right: 15, backgroundColor: 'white', padding: 10, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 15 },
+  filterButton: { position: 'absolute', right: 20, backgroundColor: 'white', padding: 12, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 20 },
   filterMenu: { backgroundColor: 'white', borderRadius: 12, padding: 15, width: 220, elevation: 10 },
   filterTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   filterItem: { paddingVertical: 10 },
