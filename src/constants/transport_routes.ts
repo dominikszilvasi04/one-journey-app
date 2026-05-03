@@ -17,21 +17,18 @@ export const DART_LINE = [
 
 
 export const MAYNOOTH_LINE = [
-  ['MYNTH', 'LXLSA', 'LXCON', 'CNSLA', 'CMINE', 'CNOCK', 'PHNPK', 'ASHTN', 'PELTN', 'BBRDG', 'DCDRA', 'CNLLY', 'TARA', 'PERSE']
+  ['MYNTH', 'LXLSA', 'LXCON', 'CLSLA', 'CMINE', 'CNOCK', 'PHNPK', 'ASHTN', 'PELTN', 'BBRDG', 'DCDRA', 'CNLLY', 'TARA', 'PERSE']
 ];
 
 
 export const M3_PARKWAY_LINE = [
-  ['M3WAY', 'DBYNE', 'HAFLD', 'CNSLA'],
-  ['DCDRA', 'DCKLS']
+  ['M3WAY', 'DBYNE', 'HAFLD', 'CLSLA', 'CMINE', 'CNOCK', 'PHNPK', 'ASHTN', 'PELTN', 'BBRDG', 'DCKLS']
 ];
+
+
+export const DOCKLANDS_ROUTING_WAYPOINT = { latitude: 53.3582, longitude: -6.2486 };
 
 
 export const NORTHERN_COMMUTER = [
-  ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'CNLLY', 'TARA', 'PERSE']
-];
-
-
-export const SOUTH_WESTERN_COMMUTER = [
-  ['HSTON', 'ADAMW', 'PNCK', 'HZLCH', 'SALNS', 'KDARE', 'MONVN', 'PTRTN', 'PTLSE']
+  ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE']
 ];
