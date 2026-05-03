@@ -1,27 +1,40 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, ActivityIndicator } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import { StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { View } from '@/components/Themed';
 import { fetchAllIrishRailStations } from '@/src/api/irish_rail_service';
+import { fetchAllLuasStops } from '@/src/api/luas_forecast_service';
 import { Station } from '@/src/types/transport_types';
 
 
 export default function MapHomeScreen() {
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   useEffect(() => {
-    const loadStations = async () => {
+    const initialiseMapData = async () => {
       try {
-        const fetchedStations = await fetchAllIrishRailStations();
-        setStations(fetchedStations);
-      } catch (failedToFetchError) {
-        setError('Failed to load stations');
-        console.error(failedToFetchError);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Location access is required to find the closest stations.');
+        } else {
+          const location = await Location.getCurrentPositionAsync({});
+          setUserLocation(location);
+        }
+        const [irishRailStations, luasStops] = await Promise.all([
+          fetchAllIrishRailStations(),
+          fetchAllLuasStops(),
+        ]);
+        setStations([...irishRailStations, ...luasStops]);
+      } catch (initialisationError) {
+        console.error(initialisationError);
+        Alert.alert('Error', 'Failed to load transport data.');
       } finally {
         setIsLoading(false);
       }
     };
-    loadStations();
+    initialiseMapData();
   }, []);
   if (isLoading) {
     return (
@@ -30,20 +43,32 @@ export default function MapHomeScreen() {
       </View>
     );
   }
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Map Home</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <Text style={styles.countText}>
-        Found {stations.length} Irish Rail Stations
-      </Text>
+      <MapView
+        style={styles.map}
+        provider={PROVIDER_DEFAULT}
+        initialRegion={{
+          latitude: userLocation?.coords.latitude ?? 53.3498,
+          longitude: userLocation?.coords.longitude ?? -6.2603,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }}
+        showsUserLocation={true}
+      >
+        {stations.map((station: Station) => (
+          <Marker
+            key={`${station.type}-${station.id}`}
+            coordinate={{
+              latitude: station.latitude,
+              longitude: station.longitude,
+            }}
+            title={station.name}
+            description={station.type}
+            pinColor={station.type === 'Luas' ? '#800080' : '#008000'}
+          />
+        ))}
+      </MapView>
     </View>
   );
 }
@@ -52,24 +77,9 @@ export default function MapHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-  countText: {
-    fontSize: 16,
-    color: '#2e78b7',
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
+  map: {
+    width: '100%',
+    height: '100%',
   },
 });
