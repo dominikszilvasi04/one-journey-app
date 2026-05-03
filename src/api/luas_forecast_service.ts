@@ -58,12 +58,15 @@ export const fetchLuasForecast = async (stopAbbreviation: string): Promise<Arriv
       : [result.stopInfo.direction];
     const arrivals: Arrival[] = [];
     directionData.forEach((direction: any) => {
-      if (!direction.tram) return;
+      if (!direction.tram) {
+        return;
+      }
       const trams = Array.isArray(direction.tram) ? direction.tram : [direction.tram];
       trams.forEach((tram: any) => {
         if (tram && tram.destination) {
-          const isServiceDisrupted = tram.destination.toLowerCase().includes('see news');
-          const minutes = (tram.dueMins === 'DUE' || isServiceDisrupted) ? 0 : parseInt(tram.dueMins);
+          const destinationLower = tram.destination.toLowerCase();
+          const isServiceDisrupted = destinationLower.includes('see news') || destinationLower.includes('no trams forecast');
+          const minutes = (tram.dueMins === 'DUE' || isServiceDisrupted || !tram.dueMins) ? 0 : parseInt(tram.dueMins);
           arrivals.push({
             stationId: stopAbbreviation,
             destination: tram.destination,
