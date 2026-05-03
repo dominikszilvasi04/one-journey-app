@@ -19,7 +19,7 @@ interface ArrivalSection {
 interface TransportRoute {
   id: string;
   color: string;
-  stationCodes: string[];
+  branches: string[][];
 }
 
 
@@ -35,13 +35,13 @@ export default function MapHomeScreen() {
   const mapReference = useRef<MapView>(null);
   const snapPoints = useMemo(() => ['10%', '50%', '90%'], []);
   const transportRoutes = useMemo((): TransportRoute[] => [
-    { id: 'Luas-Red', color: '#e60000', stationCodes: Routes.LUAS_RED_STOPS },
-    { id: 'Luas-Green', color: '#00b300', stationCodes: Routes.LUAS_GREEN_STOPS },
-    { id: 'DART', color: '#00cc00', stationCodes: Routes.DART_LINE },
-    { id: 'Maynooth', color: '#ff8c00', stationCodes: Routes.MAYNOOTH_LINE },
-    { id: 'M3-Parkway', color: '#9932cc', stationCodes: Routes.M3_PARKWAY_LINE },
-    { id: 'Northern', color: '#1e90ff', stationCodes: Routes.NORTHERN_COMMUTER },
-    { id: 'South-Western', color: '#f08080', stationCodes: Routes.SOUTH_WESTERN_COMMUTER },
+    { id: 'Luas-Red', color: '#e60000', branches: Routes.LUAS_RED_LINE },
+    { id: 'Luas-Green', color: '#00b300', branches: Routes.LUAS_GREEN_LINE },
+    { id: 'DART', color: '#00cc00', branches: Routes.DART_LINE },
+    { id: 'Maynooth', color: '#ff8c00', branches: Routes.MAYNOOTH_LINE },
+    { id: 'M3-Parkway', color: '#9932cc', branches: Routes.M3_PARKWAY_LINE },
+    { id: 'Northern', color: '#1e90ff', branches: Routes.NORTHERN_COMMUTER },
+    { id: 'South-Western', color: '#f08080', branches: Routes.SOUTH_WESTERN_COMMUTER },
   ], []);
   useEffect(() => {
     const initialiseMapData = async () => {
@@ -70,7 +70,7 @@ export default function MapHomeScreen() {
     setIsFetchingArrivals(true);
     const code = station.stationCode || station.id;
     const activeIds = transportRoutes
-      .filter(route => route.stationCodes.includes(code))
+      .filter(route => route.branches.some(branch => branch.includes(code)))
       .map(route => route.id);
     setActiveRouteIds(activeIds);
     bottomSheetReference.current?.snapToIndex(1);
@@ -94,8 +94,8 @@ export default function MapHomeScreen() {
       setIsFetchingArrivals(false);
     }
   }, [transportRoutes]);
-  const getRouteCoordinates = (stationCodes: string[]) => {
-    return stationCodes
+  const getBranchCoordinates = (branch: string[]) => {
+    return branch
       .map(code => stations.find(station => (station.stationCode === code || station.id === code)))
       .filter((station): station is Station => !!station)
       .map(station => ({ latitude: station.latitude, longitude: station.longitude }));
@@ -122,14 +122,16 @@ export default function MapHomeScreen() {
         showsUserLocation={true}
       >
         {transportRoutes.map(route => (
-          <Polyline
-            key={route.id}
-            coordinates={getRouteCoordinates(route.stationCodes)}
-            strokeColor={route.color}
-            strokeWidth={activeRouteIds.includes(route.id) ? 6 : 2}
-            lineDashPattern={activeRouteIds.includes(route.id) ? undefined : [5, 5]}
-            zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
-          />
+          route.branches.map((branch, index) => (
+            <Polyline
+              key={`${route.id}-${index}`}
+              coordinates={getBranchCoordinates(branch)}
+              strokeColor={route.color}
+              strokeWidth={activeRouteIds.includes(route.id) ? 6 : 2}
+              lineDashPattern={activeRouteIds.includes(route.id) ? undefined : [5, 5]}
+              zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
+            />
+          ))
         ))}
         {stations.map((station: Station) => (
           <Marker
