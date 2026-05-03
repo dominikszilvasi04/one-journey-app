@@ -4,6 +4,7 @@ import MapView, { Marker, PROVIDER_DEFAULT, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, View } from '@/components/Themed';
 import { fetchAllIrishRailStations, fetchIrishRailForecast } from '@/src/api/irish_rail_service';
 import { fetchAllLuasStops, fetchLuasForecast } from '@/src/api/luas_forecast_service';
@@ -41,6 +42,7 @@ export default function MapHomeScreen() {
   const [isFilterVisible, setIsFilterVisible] = useState<boolean>(false);
   const bottomSheetReference = useRef<BottomSheet>(null);
   const mapReference = useRef<MapView>(null);
+  const insets = useSafeAreaInsets();
   const snapPoints = useMemo(() => ['10%', '50%', '90%'], []);
   const transportRoutes = useMemo((): TransportRoute[] => [
     { id: 'Luas-Red', name: 'Luas Red Line', color: '#e60000', branches: Routes.LUAS_RED_LINE, type: 'Luas' },
@@ -175,12 +177,12 @@ export default function MapHomeScreen() {
           />
         ))}
       </MapView>
-      <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterVisible(true)}>
+      <TouchableOpacity style={[styles.filterButton, { top: insets.top + 10 }]} onPress={() => setIsFilterVisible(true)}>
         <Ionicons name="menu" size={28} color="black" />
       </TouchableOpacity>
       <Modal visible={isFilterVisible} transparent animationType="fade" onRequestClose={() => setIsFilterVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsFilterVisible(false)}>
-          <View style={styles.filterMenu}>
+          <View style={[styles.filterMenu, { marginTop: insets.top }]}>
             <Text style={styles.filterTitle}>Transport Filters</Text>
             {['All', 'Luas', 'Train'].map(f => (
               <TouchableOpacity key={f} style={styles.filterItem} onPress={() => { setCurrentFilter(f); setIsFilterVisible(false); }}>
@@ -238,8 +240,8 @@ export default function MapHomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { width: '100%', height: '100%' },
-  filterButton: { position: 'absolute', top: 60, right: 20, backgroundColor: 'white', padding: 10, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 110, paddingRight: 20 },
+  filterButton: { position: 'absolute', right: 15, backgroundColor: 'white', padding: 10, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 15 },
   filterMenu: { backgroundColor: 'white', borderRadius: 12, padding: 15, width: 220, elevation: 10 },
   filterTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   filterItem: { paddingVertical: 10 },

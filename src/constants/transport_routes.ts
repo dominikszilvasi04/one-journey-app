@@ -10,9 +10,9 @@ export const LUAS_GREEN_LINE = [
 
 
 export const DART_LINE = [
-  ['HOWTH', 'SUTTN', 'BYSDE', 'KBRCK', 'HWTHJ'],
+  ['HOWTH', 'SUTTN', 'BYSDE', 'HWTHJ'],
   ['MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ'],
-  ['HWTHJ', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE', 'GCDK', 'LDWNE', 'SMONT', 'SIDNY', 'BTSTN', 'BROCK', 'SEAPT', 'SHILL', 'DLERY', 'SCOVE', 'GLGRY', 'DLKEY', 'KILNY', 'SKILL', 'BRAY', 'GSTNS']
+  ['HWTHJ', 'KBRCK', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE', 'GCDK', 'LDWNE', 'SMONT', 'SIDNY', 'BTSTN', 'BROCK', 'SEAPT', 'SHILL', 'DLERY', 'SCOVE', 'GLGRY', 'DLKEY', 'KILNY', 'SKILL', 'BRAY', 'GSTNS']
 ];
 
 
@@ -30,5 +30,5 @@ export const DOCKLANDS_ROUTING_WAYPOINT = { latitude: 53.3582, longitude: -6.248
 
 
 export const NORTHERN_COMMUTER = [
-  ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE']
+  ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ', 'KBRCK', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE']
 ];
