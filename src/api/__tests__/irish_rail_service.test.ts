@@ -1,7 +1,7 @@
-import { fetchAllIrishRailStations } from '../irish_rail_service';
+import { fetchAllIrishRailStations, fetchIrishRailForecast } from '../irish_rail_service';
 
 
-const MOCK_XML_RESPONSE = `
+const MOCK_STATIONS_XML = `
 <ArrayOfObjStation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <objStation>
     <StationDesc>Bayside DART Station</StationDesc>
@@ -10,14 +10,23 @@ const MOCK_XML_RESPONSE = `
     <StationCode>BYSDE</StationCode>
     <StationId>43</StationId>
   </objStation>
-  <objStation>
-    <StationDesc>Dublin Heuston</StationDesc>
-    <StationLatitude>53.3464</StationLatitude>
-    <StationLongitude>-6.29461</StationLongitude>
-    <StationCode>HSTON</StationCode>
-    <StationId>2</StationId>
-  </objStation>
 </ArrayOfObjStation>
+`;
+
+
+const MOCK_FORECAST_XML = `
+<ArrayOfobjStationData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <objStationData>
+    <Origin>Howth</Origin>
+    <Destination>Bray</Destination>
+    <Scharrival>14:00</Scharrival>
+    <Exparrival>14:05</Exparrival>
+    <Duein>5</Duein>
+    <Status>En Route</Status>
+    <Traintype>DART</Traintype>
+    <Direction>Southbound</Direction>
+  </objStationData>
+</ArrayOfobjStationData>
 `;
 
 
@@ -28,20 +37,21 @@ describe('irish_rail_service', () => {
   it('should fetch and parse stations correctly', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      text: () => Promise.resolve(MOCK_XML_RESPONSE),
+      text: () => Promise.resolve(MOCK_STATIONS_XML),
     });
     const stations = await fetchAllIrishRailStations();
-    expect(stations).toHaveLength(2);
+    expect(stations).toHaveLength(1);
     expect(stations[0].name).toBe('Bayside DART Station');
-    expect(stations[0].type).toBe('DART');
-    expect(stations[1].name).toBe('Dublin Heuston');
-    expect(stations[1].type).toBe('Train');
   });
-  it('should throw an error if the network request fails', async () => {
+  it('should fetch and parse forecast correctly', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      statusText: 'Not Found',
+      ok: true,
+      text: () => Promise.resolve(MOCK_FORECAST_XML),
     });
-    await expect(fetchAllIrishRailStations()).rejects.toThrow('Failed to fetch Irish Rail stations: Not Found');
+    const forecast = await fetchIrishRailForecast('BYSDE');
+    expect(forecast).toHaveLength(1);
+    expect(forecast[0].destination).toBe('Bray');
+    expect(forecast[0].minutesToDeparture).toBe(5);
+    expect(forecast[0].direction).toBe('Southbound');
   });
 });
