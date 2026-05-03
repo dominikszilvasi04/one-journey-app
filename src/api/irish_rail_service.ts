@@ -18,7 +18,7 @@ export const fetchAllIrishRailStations = async (): Promise<Station[]> => {
     }
     const xmlData = await response.text();
     const result = xmlParser.parse(xmlData);
-    const rawStations = result.ArrayOfObjStation.objStation;
+    const rawStations = result.ArrayOfObjStation?.objStation;
     if (!rawStations) return [];
     const stationsData = Array.isArray(rawStations) ? rawStations : [rawStations];
     return stationsData.map((station: any): Station => ({
@@ -44,7 +44,7 @@ export const fetchIrishRailForecast = async (stationCode: string): Promise<Arriv
     }
     const xmlData = await response.text();
     const result = xmlParser.parse(xmlData);
-    const rawArrivals = result.ArrayOfobjStationData.objStationData;
+    const rawArrivals = result.ArrayOfObjStationData?.objStationData;
     if (!rawArrivals) return [];
     const arrivalData = Array.isArray(rawArrivals) ? rawArrivals : [rawArrivals];
     return arrivalData.map((arrival: any): Arrival => ({

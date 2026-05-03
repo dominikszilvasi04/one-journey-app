@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { StyleSheet, ActivityIndicator, Alert, SectionList } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
@@ -9,12 +9,18 @@ import { fetchAllLuasStops, fetchLuasForecast } from '@/src/api/luas_forecast_se
 import { Station, Arrival } from '@/src/types/transport_types';
 
 
+interface ArrivalSection {
+  title: string;
+  data: Arrival[];
+}
+
+
 export default function MapHomeScreen() {
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [arrivals, setArrivals] = useState<Arrival[]>([]);
+  const [arrivals, setArrivals] = useState<ArrivalSection[]>([]);
   const [isFetchingArrivals, setIsFetchingArrivals] = useState<boolean>(false);
   const bottomSheetReference = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['10%', '50%', '90%'], []);
@@ -41,6 +47,22 @@ export default function MapHomeScreen() {
     };
     initialiseMapData();
   }, []);
+  const groupArrivalsByDirection = (fetchedArrivals: Arrival[]): ArrivalSection[] => {
+    const grouped = fetchedArrivals.reduce((sections: { [key: string]: Arrival[] }, arrival) => {
+      const directionLabel = arrival.direction === 'Inbound' ? 'Towards City Centre' : 
+                             arrival.direction === 'Outbound' ? 'Away from City Centre' : 
+                             arrival.direction;
+      if (!sections[directionLabel]) {
+        sections[directionLabel] = [];
+      }
+      sections[directionLabel].push(arrival);
+      return sections;
+    }, {});
+    return Object.keys(grouped).map(title => ({
+      title,
+      data: grouped[title].sort((a, b) => a.minutesToDeparture - b.minutesToDeparture),
+    }));
+  };
   const handleMarkerPress = useCallback(async (station: Station) => {
     setSelectedStation(station);
     setArrivals([]);
@@ -50,7 +72,7 @@ export default function MapHomeScreen() {
       const fetchedArrivals = station.type === 'Luas' 
         ? await fetchLuasForecast(station.id)
         : await fetchIrishRailForecast(station.id);
-      setArrivals(fetchedArrivals.sort((a, b) => a.minutesToDeparture - b.minutesToDeparture));
+      setArrivals(groupArrivalsByDirection(fetchedArrivals));
     } catch (error) {
       console.error(error);
     } finally {
@@ -104,21 +126,26 @@ export default function MapHomeScreen() {
               {isFetchingArrivals ? (
                 <ActivityIndicator style={styles.loader} color="#2e78b7" />
               ) : (
-                <FlatList
-                  data={arrivals}
+                <SectionList
+                  sections={arrivals}
                   keyExtractor={(item, index) => `${item.destination}-${index}`}
                   renderItem={({ item }) => (
                     <View style={styles.arrivalItem}>
                       <View style={styles.arrivalInfo}>
                         <Text style={styles.destinationText}>{item.destination}</Text>
-                        <Text style={styles.directionText}>{item.direction}</Text>
+                        {item.status === 'Disrupted' && (
+                          <Text style={styles.disruptionText}>Service Disruption</Text>
+                        )}
                       </View>
                       <View style={styles.timeInfo}>
-                        <Text style={styles.minutesText}>
-                          {item.minutesToDeparture === 0 ? 'Due' : `${item.minutesToDeparture} min`}
+                        <Text style={[styles.minutesText, item.status === 'Disrupted' && styles.disruptedTime]}>
+                          {item.status === 'Disrupted' ? '-' : (item.minutesToDeparture === 0 ? 'Due' : `${item.minutesToDeparture} min`)}
                         </Text>
                       </View>
                     </View>
+                  )}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Text style={styles.sectionHeader}>{title}</Text>
                   )}
                   ListEmptyComponent={<Text style={styles.emptyText}>No upcoming arrivals found.</Text>}
                   style={styles.arrivalsList}
@@ -162,6 +189,14 @@ const styles = StyleSheet.create({
   arrivalsList: {
     flex: 1,
   },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    backgroundColor: '#f8f8f8',
+    padding: 8,
+    marginTop: 10,
+    borderRadius: 4,
+  },
   arrivalItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -173,23 +208,29 @@ const styles = StyleSheet.create({
   },
   arrivalInfo: {
     backgroundColor: 'transparent',
+    flex: 1,
   },
   destinationText: {
     fontSize: 18,
     fontWeight: '600',
   },
-  directionText: {
-    fontSize: 14,
-    color: '#888',
+  disruptionText: {
+    fontSize: 12,
+    color: '#ff4444',
+    fontWeight: 'bold',
   },
   timeInfo: {
     alignItems: 'flex-end',
     backgroundColor: 'transparent',
+    marginLeft: 10,
   },
   minutesText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2e78b7',
+  },
+  disruptedTime: {
+    color: '#999',
   },
   emptyText: {
     textAlign: 'center',

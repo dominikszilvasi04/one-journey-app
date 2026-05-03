@@ -15,7 +15,7 @@ const MOCK_STATIONS_XML = `
 
 
 const MOCK_FORECAST_XML = `
-<ArrayOfobjStationData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<ArrayOfObjStationData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <objStationData>
     <Origin>Howth</Origin>
     <Destination>Bray</Destination>
@@ -26,7 +26,7 @@ const MOCK_FORECAST_XML = `
     <Traintype>DART</Traintype>
     <Direction>Southbound</Direction>
   </objStationData>
-</ArrayOfobjStationData>
+</ArrayOfObjStationData>
 `;
 
 
