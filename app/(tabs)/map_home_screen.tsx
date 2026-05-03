@@ -7,6 +7,7 @@ import { Text, View } from '@/components/Themed';
 import { fetchAllIrishRailStations, fetchIrishRailForecast } from '@/src/api/irish_rail_service';
 import { fetchAllLuasStops, fetchLuasForecast } from '@/src/api/luas_forecast_service';
 import { Station, Arrival } from '@/src/types/transport_types';
+import * as Routes from '@/src/constants/transport_routes';
 
 
 interface ArrivalSection {
@@ -18,22 +19,30 @@ interface ArrivalSection {
 interface TransportRoute {
   id: string;
   color: string;
-  coordinates: { latitude: number; longitude: number }[];
+  stationCodes: string[];
 }
 
 
 export default function MapHomeScreen() {
   const [stations, setStations] = useState<Station[]>([]);
-  const [routes, setRoutes] = useState<TransportRoute[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [arrivals, setArrivals] = useState<ArrivalSection[]>([]);
   const [isFetchingArrivals, setIsFetchingArrivals] = useState<boolean>(false);
-  const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
+  const [activeRouteIds, setActiveRouteIds] = useState<string[]>([]);
   const bottomSheetReference = useRef<BottomSheet>(null);
   const mapReference = useRef<MapView>(null);
   const snapPoints = useMemo(() => ['10%', '50%', '90%'], []);
+  const transportRoutes = useMemo((): TransportRoute[] => [
+    { id: 'Luas-Red', color: '#e60000', stationCodes: Routes.LUAS_RED_STOPS },
+    { id: 'Luas-Green', color: '#00b300', stationCodes: Routes.LUAS_GREEN_STOPS },
+    { id: 'DART', color: '#00cc00', stationCodes: Routes.DART_LINE },
+    { id: 'Maynooth', color: '#ff8c00', stationCodes: Routes.MAYNOOTH_LINE },
+    { id: 'M3-Parkway', color: '#9932cc', stationCodes: Routes.M3_PARKWAY_LINE },
+    { id: 'Northern', color: '#1e90ff', stationCodes: Routes.NORTHERN_COMMUTER },
+    { id: 'South-Western', color: '#f08080', stationCodes: Routes.SOUTH_WESTERN_COMMUTER },
+  ], []);
   useEffect(() => {
     const initialiseMapData = async () => {
       try {
@@ -46,23 +55,7 @@ export default function MapHomeScreen() {
           fetchAllIrishRailStations(),
           fetchAllLuasStops(),
         ]);
-        const allStations = [...irishRailStations, ...luasStops];
-        setStations(allStations);
-        const redLineStops = luasStops.filter(station => station.line === 'Red');
-        const greenLineStops = luasStops.filter(station => station.line === 'Green');
-        const transportRoutes: TransportRoute[] = [
-          {
-            id: 'Luas-Red',
-            color: '#800080',
-            coordinates: redLineStops.map(station => ({ latitude: station.latitude, longitude: station.longitude })),
-          },
-          {
-            id: 'Luas-Green',
-            color: '#008000',
-            coordinates: greenLineStops.map(station => ({ latitude: station.latitude, longitude: station.longitude })),
-          },
-        ];
-        setRoutes(transportRoutes);
+        setStations([...irishRailStations, ...luasStops]);
       } catch (error) {
         console.error(error);
       } finally {
@@ -75,11 +68,11 @@ export default function MapHomeScreen() {
     setSelectedStation(station);
     setArrivals([]);
     setIsFetchingArrivals(true);
-    if (station.type === 'Luas') {
-      setActiveRouteId(`Luas-${station.line}`);
-    } else {
-      setActiveRouteId(null);
-    }
+    const code = station.stationCode || station.id;
+    const activeIds = transportRoutes
+      .filter(route => route.stationCodes.includes(code))
+      .map(route => route.id);
+    setActiveRouteIds(activeIds);
     bottomSheetReference.current?.snapToIndex(1);
     try {
       const fetchedArrivals = station.type === 'Luas' 
@@ -100,7 +93,13 @@ export default function MapHomeScreen() {
     } finally {
       setIsFetchingArrivals(false);
     }
-  }, []);
+  }, [transportRoutes]);
+  const getRouteCoordinates = (stationCodes: string[]) => {
+    return stationCodes
+      .map(code => stations.find(station => (station.stationCode === code || station.id === code)))
+      .filter((station): station is Station => !!station)
+      .map(station => ({ latitude: station.latitude, longitude: station.longitude }));
+  };
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -122,35 +121,26 @@ export default function MapHomeScreen() {
         }}
         showsUserLocation={true}
       >
-        {routes.map(route => (
+        {transportRoutes.map(route => (
           <Polyline
             key={route.id}
-            coordinates={route.coordinates}
+            coordinates={getRouteCoordinates(route.stationCodes)}
             strokeColor={route.color}
-            strokeWidth={activeRouteId === route.id ? 5 : 2}
-            lineDashPattern={activeRouteId === route.id ? undefined : [5, 5]}
+            strokeWidth={activeRouteIds.includes(route.id) ? 6 : 2}
+            lineDashPattern={activeRouteIds.includes(route.id) ? undefined : [5, 5]}
+            zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
           />
         ))}
         {stations.map((station: Station) => (
           <Marker
             key={`${station.type}-${station.id}`}
-            coordinate={{
-              latitude: station.latitude,
-              longitude: station.longitude,
-            }}
-            title={station.name}
-            pinColor={station.type === 'Luas' ? (station.line === 'Red' ? '#e60000' : '#00b300') : '#0000ff'}
+            coordinate={{ latitude: station.latitude, longitude: station.longitude }}
+            pinColor={station.type === 'Luas' ? (station.line === 'Red' ? '#e60000' : '#00b300') : (station.type === 'DART' ? '#00cc00' : '#0000ff')}
             onPress={() => handleMarkerPress(station)}
           />
         ))}
       </MapView>
-      <BottomSheet
-        ref={bottomSheetReference}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onClose={() => setActiveRouteId(null)}
-      >
+      <BottomSheet ref={bottomSheetReference} index={-1} snapPoints={snapPoints} enablePanDownToClose onClose={() => setActiveRouteIds([])}>
         <BottomSheetView style={styles.bottomSheetContent}>
           {selectedStation && (
             <>
@@ -175,9 +165,7 @@ export default function MapHomeScreen() {
                       </View>
                     </View>
                   )}
-                  renderSectionHeader={({ section: { title } }) => (
-                    <Text style={styles.sectionHeader}>{title}</Text>
-                  )}
+                  renderSectionHeader={({ section: { title } }) => <Text style={styles.sectionHeader}>{title}</Text>}
                   ListEmptyComponent={<Text style={styles.emptyText}>No upcoming arrivals found.</Text>}
                   style={styles.arrivalsList}
                 />
@@ -192,80 +180,20 @@ export default function MapHomeScreen() {
 
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  bottomSheetContent: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: 'white',
-  },
-  stationName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  stationType: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-  },
-  loader: {
-    marginTop: 40,
-  },
-  arrivalsList: {
-    flex: 1,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    backgroundColor: '#f8f8f8',
-    padding: 8,
-    marginTop: 10,
-    borderRadius: 4,
-  },
-  arrivalItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
-    backgroundColor: 'transparent',
-  },
-  arrivalInfo: {
-    backgroundColor: 'transparent',
-    flex: 1,
-  },
-  destinationText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  disruptionText: {
-    fontSize: 12,
-    color: '#ff4444',
-    fontWeight: 'bold',
-  },
-  timeInfo: {
-    alignItems: 'flex-end',
-    backgroundColor: 'transparent',
-    marginLeft: 10,
-  },
-  minutesText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2e78b7',
-  },
-  disruptedTime: {
-    color: '#999',
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: '#999',
-  },
+  container: { flex: 1 },
+  map: { width: '100%', height: '100%' },
+  bottomSheetContent: { flex: 1, padding: 20, backgroundColor: 'white' },
+  stationName: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
+  stationType: { fontSize: 16, color: '#666', marginBottom: 20 },
+  loader: { marginTop: 40 },
+  arrivalsList: { flex: 1 },
+  sectionHeader: { fontSize: 16, fontWeight: 'bold', backgroundColor: '#f8f8f8', padding: 8, marginTop: 10, borderRadius: 4 },
+  arrivalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#eee', backgroundColor: 'transparent' },
+  arrivalInfo: { backgroundColor: 'transparent', flex: 1 },
+  destinationText: { fontSize: 18, fontWeight: '600' },
+  disruptionText: { fontSize: 12, color: '#ff4444', fontWeight: 'bold' },
+  timeInfo: { alignItems: 'flex-end', backgroundColor: 'transparent', marginLeft: 10 },
+  minutesText: { fontSize: 18, fontWeight: 'bold', color: '#2e78b7' },
+  disruptedTime: { color: '#999' },
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#999' },
 });
