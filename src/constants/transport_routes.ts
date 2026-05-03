@@ -10,28 +10,28 @@ export const LUAS_GREEN_LINE = [
 
 
 export const DART_LINE = [
-  ['HOWTH', 'SUTTN', 'BYSDE', 'KBRCK', 'HJUTN'],
-  ['MHIDE', 'PTMNK', 'CGFRN', 'HJUTN'],
-  ['HJUTN', 'RAHNY', 'HMTWN', 'KSTER', 'CTARF', 'CNLLY', 'TARA', 'PERSE', 'GCDCK', 'LSDWN', 'SYMNT', 'SIDNY', 'BTSTN', 'BROCK', 'SPNT', 'SHILL', 'DLGHY', 'SNCVE', 'GLGRY', 'DLKEY', 'KILNY', 'SHNKL', 'BRAY', 'GSTNS']
+  ['HOWTH', 'SUTTN', 'BYSDE', 'KBRCK', 'HWTHJ'],
+  ['MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ'],
+  ['HWTHJ', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE', 'GCDK', 'LDWNE', 'SMONT', 'SIDNY', 'BTSTN', 'BROCK', 'SEAPT', 'SHILL', 'DLERY', 'SCOVE', 'GLGRY', 'DLKEY', 'KILNY', 'SKILL', 'BRAY', 'GSTNS']
 ];
 
 
 export const MAYNOOTH_LINE = [
-  ['MYNTH', 'LXLSA', 'LXCON', 'CNSLA', 'CLMIN', 'CSTNK', 'NAVNP', 'ASHTN', 'PLTTN', 'BBHLS', 'DRUMC', 'CNLLY', 'TARA', 'PERSE']
+  ['MYNTH', 'LXLSA', 'LXCON', 'CNSLA', 'CMINE', 'CNOCK', 'PHNPK', 'ASHTN', 'PELTN', 'BBRDG', 'DCDRA', 'CNLLY', 'TARA', 'PERSE']
 ];
 
 
 export const M3_PARKWAY_LINE = [
-  ['M3PKY', 'DBYNE', 'HNSFD', 'CNSLA'],
-  ['DRUMC', 'DKLDS']
+  ['M3WAY', 'DBYNE', 'HAFLD', 'CNSLA'],
+  ['DCDRA', 'DCKLS']
 ];
 
 
 export const NORTHERN_COMMUTER = [
-  ['DNDLK', 'DRGDA', 'LYTWN', 'GMNST', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'CNLLY', 'TARA', 'PERSE']
+  ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'CNLLY', 'TARA', 'PERSE']
 ];
 
 
 export const SOUTH_WESTERN_COMMUTER = [
-  ['HSTN', 'ADAMW', 'PNCK', 'HAZLH', 'SALLS', 'KLDRE', 'MTRVN', 'PTHRE', 'PLOE']
+  ['HSTON', 'ADAMW', 'PNCK', 'HZLCH', 'SALNS', 'KDARE', 'MONVN', 'PTRTN', 'PTLSE']
 ];

@@ -22,12 +22,12 @@ export const fetchAllIrishRailStations = async (): Promise<Station[]> => {
     if (!rawStations) return [];
     const stationsData = Array.isArray(rawStations) ? rawStations : [rawStations];
     return stationsData.map((station: any): Station => ({
-      id: station.StationCode,
+      id: station.StationCode.trim(),
       name: station.StationDesc,
       latitude: parseFloat(station.StationLatitude),
       longitude: parseFloat(station.StationLongitude),
       type: station.StationDesc.toLowerCase().includes('dart') ? 'DART' : 'Train',
-      stationCode: station.StationCode,
+      stationCode: station.StationCode.trim(),
     }));
   } catch (error) {
     console.error('Error fetching Irish Rail stations:', error);
