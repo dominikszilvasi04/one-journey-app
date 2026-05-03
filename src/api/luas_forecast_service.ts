@@ -7,6 +7,7 @@ const LUAS_FORECAST_URL = 'https://luasforecasts.rpa.ie/xml/get.ashx?action=fore
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
+  textNodeName: 'name',
 });
 
 
@@ -18,15 +19,22 @@ export const fetchAllLuasStops = async (): Promise<Station[]> => {
     }
     const xmlData = await response.text();
     const result = xmlParser.parse(xmlData);
-    const stopsData = result.stops.stop;
-    return stopsData.map((stop: any): Station => ({
-      id: stop.abbreviation,
-      name: stop.display_name,
-      latitude: parseFloat(stop.latitude),
-      longitude: parseFloat(stop.longitude),
-      type: 'Luas',
-      line: stop.line === 'Red' ? 'Red' : 'Green',
-    }));
+    const lines = Array.isArray(result.stops.line) ? result.stops.line : [result.stops.line];
+    const stations: Station[] = [];
+    lines.forEach((line: any) => {
+      const stops = Array.isArray(line.stop) ? line.stop : [line.stop];
+      stops.forEach((stop: any) => {
+        stations.push({
+          id: stop.abrev,
+          name: stop.name,
+          latitude: parseFloat(stop.lat),
+          longitude: parseFloat(stop.long),
+          type: 'Luas',
+          line: line.name.includes('Red') ? 'Red' : 'Green',
+        });
+      });
+    });
+    return stations;
   } catch (error) {
     console.error('Error fetching Luas stops:', error);
     throw error;
@@ -42,11 +50,15 @@ export const fetchLuasForecast = async (stopAbbreviation: string): Promise<Arriv
     }
     const xmlData = await response.text();
     const result = xmlParser.parse(xmlData);
+    if (!result.stopInfo || !result.stopInfo.direction) {
+      return [];
+    }
     const directionData = Array.isArray(result.stopInfo.direction) 
       ? result.stopInfo.direction 
       : [result.stopInfo.direction];
     const arrivals: Arrival[] = [];
     directionData.forEach((direction: any) => {
+      if (!direction.tram) return;
       const trams = Array.isArray(direction.tram) ? direction.tram : [direction.tram];
       trams.forEach((tram: any) => {
         if (tram && tram.destination) {
@@ -56,7 +68,7 @@ export const fetchLuasForecast = async (stopAbbreviation: string): Promise<Arriv
             origin: 'Unknown',
             scheduledArrival: new Date().toISOString(),
             expectedArrival: new Date().toISOString(),
-            minutesToDeparture: tram.dueMins === 'DUE' ? 0 : parseInt(tram.dueMins),
+            minutesToDeparture: tram.dueMins === 'DUE' ? 0 : parseInt(tram.dueMins) || 0,
             status: tram.dueMins === 'DUE' ? 'Due' : 'On Time',
             transportType: 'Luas',
             direction: direction.name === 'Inbound' ? 'Inbound' : 'Outbound',

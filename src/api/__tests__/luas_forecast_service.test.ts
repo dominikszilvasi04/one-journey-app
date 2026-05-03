@@ -3,14 +3,18 @@ import { fetchAllLuasStops, fetchLuasForecast } from '../luas_forecast_service';
 
 const MOCK_STOPS_XML = `
 <stops>
-  <stop abbreviation="STP" display_name="St. Stephen's Green" latitude="53.339" longitude="-6.261" line="Green" />
-  <stop abbreviation="TUL" display_name="Tallaght" latitude="53.287" longitude="-6.371" line="Red" />
+  <line name="Luas Green Line">
+    <stop abrev="STS" lat="53.339" long="-6.261">St. Stephen's Green</stop>
+  </line>
+  <line name="Luas Red Line">
+    <stop abrev="TAL" lat="53.287" long="-6.371">Tallaght</stop>
+  </line>
 </stops>
 `;
 
 
 const MOCK_FORECAST_XML = `
-<stopInfo stop="St. Stephen's Green" abbreviation="STP">
+<stopInfo stop="St. Stephen's Green" stopAbv="STS">
   <direction name="Inbound">
     <tram destination="Broombridge" dueMins="DUE" />
     <tram destination="Broombridge" dueMins="5" />
@@ -43,7 +47,7 @@ describe('luas_forecast_service', () => {
       ok: true,
       text: () => Promise.resolve(MOCK_FORECAST_XML),
     });
-    const forecast = await fetchLuasForecast('STP');
+    const forecast = await fetchLuasForecast('STS');
     expect(forecast).toHaveLength(3);
     expect(forecast[0].destination).toBe('Broombridge');
     expect(forecast[0].minutesToDeparture).toBe(0);
