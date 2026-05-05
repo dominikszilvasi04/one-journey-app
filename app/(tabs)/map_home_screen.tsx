@@ -1,15 +1,18 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, ActivityIndicator, Alert, SectionList, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, ActivityIndicator, SectionList, TouchableOpacity, Modal } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, View } from '@/components/Themed';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 import { fetchAllIrishRailStations, fetchIrishRailForecast } from '@/src/api/irish_rail_service';
 import { fetchAllLuasStops, fetchLuasForecast } from '@/src/api/luas_forecast_service';
 import { Station, Arrival } from '@/src/types/transport_types';
 import * as Routes from '@/src/constants/transport_routes';
+import { useFavourites } from '@/src/context/FavouritesContext';
 
 
 interface ArrivalSection {
@@ -31,6 +34,11 @@ type FilterType = 'All' | 'Luas' | 'Train' | string;
 
 
 export default function MapHomeScreen() {
+  const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
+  const palette = Colors[colorScheme];
+  const mutedTextColor = isDark ? '#b7becb' : '#666666';
+  const styles = useMemo(() => createStyles(isDark, palette), [isDark, palette]);
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
@@ -40,9 +48,12 @@ export default function MapHomeScreen() {
   const [activeRouteIds, setActiveRouteIds] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<FilterType>('All');
   const [isFilterVisible, setIsFilterVisible] = useState<boolean>(false);
+  const [isLineEditorVisible, setIsLineEditorVisible] = useState<boolean>(false);
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const bottomSheetReference = useRef<BottomSheet>(null);
   const mapReference = useRef<MapView>(null);
   const insets = useSafeAreaInsets();
+  const { isFavourite, addFavourite, removeFavourite } = useFavourites();
   const snapPoints = useMemo(() => ['10%', '50%', '90%'], []);
   const transportRoutes = useMemo((): TransportRoute[] => [
     { id: 'Luas-Red', name: 'Luas Red Line', color: '#e60000', branches: Routes.LUAS_RED_LINE, type: 'Luas' },
@@ -118,27 +129,58 @@ export default function MapHomeScreen() {
     return coords;
   };
   const filteredRoutes = useMemo(() => {
-    if (currentFilter === 'All') return transportRoutes;
-    if (currentFilter === 'Luas') return transportRoutes.filter(r => r.type === 'Luas');
-    if (currentFilter === 'Train') return transportRoutes.filter(r => r.type === 'Train' || r.type === 'DART');
-    return transportRoutes.filter(r => r.id === currentFilter);
-  }, [currentFilter, transportRoutes]);
-  const filteredStations = useMemo(() => {
-    if (currentFilter === 'All') return stations;
-    const allowedTypes = currentFilter === 'Luas' ? ['Luas'] : 
-                         currentFilter === 'Train' ? ['Train', 'DART'] : [];
-    if (allowedTypes.length > 0) return stations.filter(s => allowedTypes.includes(s.type));
-    const activeRoute = transportRoutes.find(r => r.id === currentFilter);
-    if (activeRoute) {
-      const allCodes = activeRoute.branches.flat();
-      return stations.filter(s => allCodes.includes(s.stationCode || s.id));
+    let baseRoutes = transportRoutes;
+    if (currentFilter === 'Luas') {
+      baseRoutes = transportRoutes.filter(r => r.type === 'Luas');
+    } else if (currentFilter === 'Train') {
+      baseRoutes = transportRoutes.filter(r => r.type === 'Train' || r.type === 'DART');
+    } else if (currentFilter !== 'All') {
+      baseRoutes = transportRoutes.filter(r => r.id === currentFilter);
     }
-    return stations;
-  }, [currentFilter, stations, transportRoutes]);
+
+    if (selectedLineIds.length === 0 || currentFilter !== 'All') {
+      return baseRoutes;
+    }
+
+    return baseRoutes.filter(r => selectedLineIds.includes(r.id));
+  }, [currentFilter, selectedLineIds, transportRoutes]);
+
+  const toggleLineSelection = useCallback((lineId: string) => {
+    setSelectedLineIds(prev => (
+      prev.includes(lineId)
+        ? prev.filter(id => id !== lineId)
+        : [...prev, lineId]
+    ));
+  }, []);
+
+  const clearLineSelections = useCallback(() => {
+    setSelectedLineIds([]);
+  }, []);
+
+  const filteredStations = useMemo(() => {
+    if (currentFilter === 'All' && selectedLineIds.length === 0) {
+      return stations;
+    }
+
+    if (currentFilter === 'Luas' && selectedLineIds.length === 0) {
+      return stations.filter(station => station.type === 'Luas');
+    }
+
+    if (currentFilter === 'Train' && selectedLineIds.length === 0) {
+      return stations.filter(station => station.type === 'Train' || station.type === 'DART');
+    }
+
+    const allowedCodes = new Set(filteredRoutes.flatMap(route => route.branches.flat()));
+    if (allowedCodes.size === 0) {
+      return stations;
+    }
+
+    return stations.filter(station => allowedCodes.has(station.stationCode || station.id));
+  }, [currentFilter, filteredRoutes, selectedLineIds.length, stations]);
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2e78b7" />
+        <ActivityIndicator size="large" color={palette.tint} />
       </View>
     );
   }
@@ -177,9 +219,17 @@ export default function MapHomeScreen() {
           />
         ))}
       </MapView>
-      <TouchableOpacity style={[styles.filterButton, { bottom: insets.bottom + 20 }]} onPress={() => setIsFilterVisible(true)}>
-        <Ionicons name="menu" size={28} color="black" />
-      </TouchableOpacity>
+      <View style={[styles.controlsContainer, { bottom: insets.bottom + 20 }]}>
+        <TouchableOpacity style={styles.controlButton} onPress={() => setIsFilterVisible(true)}>
+          <Ionicons name="funnel-outline" size={18} color={palette.text} />
+          <Text style={styles.controlButtonText}>{currentFilter}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.controlButton} onPress={() => setIsLineEditorVisible(true)}>
+          <Ionicons name="create-outline" size={18} color={palette.text} />
+          <Text style={styles.controlButtonText}>Edit Lines</Text>
+        </TouchableOpacity>
+      </View>
+
       <Modal visible={isFilterVisible} transparent animationType="fade" onRequestClose={() => setIsFilterVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsFilterVisible(false)}>
           <View style={[styles.filterMenu, { marginBottom: insets.bottom + 80 }]}>
@@ -198,14 +248,57 @@ export default function MapHomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <Modal visible={isLineEditorVisible} transparent animationType="fade" onRequestClose={() => setIsLineEditorVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setIsLineEditorVisible(false)}>
+          <View style={[styles.filterMenu, { marginBottom: insets.bottom + 80 }]}> 
+            <View style={styles.lineEditorHeader}>
+              <Text style={styles.filterTitle}>Choose Lines</Text>
+              <TouchableOpacity onPress={clearLineSelections}>
+                <Text style={styles.clearText}>Show all</Text>
+              </TouchableOpacity>
+            </View>
+
+            {transportRoutes.map(route => {
+              const selected = selectedLineIds.includes(route.id);
+              return (
+                <TouchableOpacity key={route.id} style={styles.lineEditorItem} onPress={() => toggleLineSelection(route.id)}>
+                  <View style={[styles.routeDot, { backgroundColor: route.color }]} />
+                  <Text style={[styles.filterText, selected && styles.activeFilter]}>{route.name}</Text>
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={20}
+                    color={selected ? palette.tint : mutedTextColor}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <BottomSheet ref={bottomSheetReference} index={-1} snapPoints={snapPoints} enablePanDownToClose onClose={() => setActiveRouteIds([])}>
         <BottomSheetView style={styles.bottomSheetContent}>
           {selectedStation && (
             <>
-              <Text style={styles.stationName}>{selectedStation.name}</Text>
-              <Text style={styles.stationType}>{selectedStation.type} {selectedStation.line ? `${selectedStation.line} Line` : ''}</Text>
+              <View style={styles.stationHeader}>
+                <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+                  <Text style={styles.stationName}>{selectedStation.name}</Text>
+                  <Text style={styles.stationType}>{selectedStation.type} {selectedStation.line ? `${selectedStation.line} Line` : ''}</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => isFavourite(selectedStation.id) ? removeFavourite(selectedStation.id) : addFavourite(selectedStation.id)}
+                  style={styles.favouriteButton}
+                >
+                  <Ionicons 
+                    name={isFavourite(selectedStation.id) ? "heart" : "heart-outline"} 
+                    size={28} 
+                    color={isFavourite(selectedStation.id) ? "#ff4444" : mutedTextColor} 
+                  />
+                </TouchableOpacity>
+              </View>
               {isFetchingArrivals ? (
-                <ActivityIndicator style={styles.loader} color="#2e78b7" />
+                <ActivityIndicator style={styles.loader} color={palette.tint} />
               ) : (
                 <SectionList
                   sections={arrivals}
@@ -237,29 +330,69 @@ export default function MapHomeScreen() {
 }
 
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { width: '100%', height: '100%' },
-  filterButton: { position: 'absolute', right: 20, backgroundColor: 'white', padding: 12, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 20 },
-  filterMenu: { backgroundColor: 'white', borderRadius: 12, padding: 15, width: 220, elevation: 10 },
-  filterTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-  filterItem: { paddingVertical: 10 },
-  filterText: { fontSize: 16, color: '#666' },
-  activeFilter: { color: '#2e78b7', fontWeight: 'bold' },
-  separatorSmall: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
-  bottomSheetContent: { flex: 1, padding: 20, backgroundColor: 'white' },
-  stationName: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
-  stationType: { fontSize: 16, color: '#666', marginBottom: 20 },
-  loader: { marginTop: 40 },
-  arrivalsList: { flex: 1 },
-  sectionHeader: { fontSize: 16, fontWeight: 'bold', backgroundColor: '#f8f8f8', padding: 8, marginTop: 10, borderRadius: 4 },
-  arrivalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#eee', backgroundColor: 'transparent' },
-  arrivalInfo: { backgroundColor: 'transparent', flex: 1 },
-  destinationText: { fontSize: 18, fontWeight: '600' },
-  disruptionText: { fontSize: 12, color: '#ff4444', fontWeight: 'bold' },
-  timeInfo: { alignItems: 'flex-end', backgroundColor: 'transparent', marginLeft: 10 },
-  minutesText: { fontSize: 18, fontWeight: 'bold', color: '#2e78b7' },
-  disruptedTime: { color: '#999' },
-  emptyText: { textAlign: 'center', marginTop: 40, color: '#999' },
-});
+function createStyles(isDark: boolean, palette: typeof Colors.light) {
+  const surface = isDark ? '#16191f' : '#ffffff';
+  const muted = isDark ? '#b7becb' : '#666666';
+  const border = isDark ? '#2b3240' : '#e6e8eb';
+  const overlay = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)';
+  const sectionSurface = isDark ? '#202632' : '#f8f8f8';
+
+  return StyleSheet.create({
+    container: { flex: 1 },
+    map: { width: '100%', height: '100%' },
+    controlsContainer: { position: 'absolute', right: 16, gap: 10 },
+    controlButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: surface,
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor: border,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.18,
+      shadowRadius: 3,
+    },
+    controlButtonText: { fontSize: 14, fontWeight: '600', color: palette.text },
+    modalOverlay: { flex: 1, backgroundColor: overlay, justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 20 },
+    filterMenu: { backgroundColor: surface, borderRadius: 12, padding: 15, width: 260, elevation: 10, borderWidth: 1, borderColor: border },
+    filterTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: palette.text },
+    filterItem: { paddingVertical: 10 },
+    filterText: { fontSize: 16, color: muted },
+    activeFilter: { color: palette.tint, fontWeight: 'bold' },
+    separatorSmall: { height: 1, backgroundColor: border, marginVertical: 10 },
+    lineEditorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'transparent' },
+    clearText: { color: palette.tint, fontWeight: '600' },
+    lineEditorItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: border,
+      backgroundColor: 'transparent',
+    },
+    routeDot: { width: 10, height: 10, borderRadius: 5 },
+    bottomSheetContent: { flex: 1, padding: 20, backgroundColor: surface },
+    stationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, backgroundColor: 'transparent' },
+    favouriteButton: { padding: 5, backgroundColor: 'transparent' },
+    stationName: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
+    stationType: { fontSize: 16, color: muted, marginBottom: 20 },
+    loader: { marginTop: 40 },
+    arrivalsList: { flex: 1 },
+    sectionHeader: { fontSize: 16, fontWeight: 'bold', backgroundColor: sectionSurface, padding: 8, marginTop: 10, borderRadius: 4, color: palette.text },
+    arrivalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: border, backgroundColor: 'transparent' },
+    arrivalInfo: { backgroundColor: 'transparent', flex: 1 },
+    destinationText: { fontSize: 18, fontWeight: '600' },
+    disruptionText: { fontSize: 12, color: '#ff4444', fontWeight: 'bold' },
+    timeInfo: { alignItems: 'flex-end', backgroundColor: 'transparent', marginLeft: 10 },
+    minutesText: { fontSize: 18, fontWeight: 'bold', color: palette.tint },
+    disruptedTime: { color: muted },
+    emptyText: { textAlign: 'center', marginTop: 40, color: muted },
+  });
+}

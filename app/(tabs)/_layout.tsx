@@ -48,7 +48,7 @@ export default function TabLayout() {
         name="favourites_screen"
         options={{
           title: 'Favourites',
-          tabBarIcon: ({ color }) => <TabBarIcon name="star" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="heart" color={color} />,
         }}
       />
     </Tabs>

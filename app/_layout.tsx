@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
+import { FavouritesProvider } from '@/src/context/FavouritesContext';
 
 
 export {
@@ -49,11 +50,13 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="settings_modal_screen" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <FavouritesProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="settings_modal_screen" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+    </FavouritesProvider>
   );
 }
