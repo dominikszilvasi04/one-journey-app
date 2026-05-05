@@ -6,8 +6,8 @@ import { Station } from '../types/transport_types';
 interface FavouritesContextType {
   favourites: Station[];
   addFavourite: (station: Station) => Promise<void>;
-  removeFavourite: (stationId: string) => Promise<void>;
-  isFavourite: (stationId: string) => boolean;
+  removeFavourite: (station: Station) => Promise<void>;
+  isFavourite: (station: Station) => boolean;
 }
 
 
@@ -15,6 +15,12 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(undef
 
 
 const STORAGE_KEY = '@one_journey_favourites';
+
+const getStationKey = (station: Station) => {
+  const baseId = station.stationCode ?? station.id;
+  const lineId = station.line ?? 'none';
+  return `${station.type}:${baseId}:${lineId}`;
+};
 
 
 export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -30,7 +36,17 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setFavourites(JSON.parse(stored));
+        const parsed = JSON.parse(stored) as Station[];
+        const uniqueByKey = new Map<string, Station>();
+        parsed.forEach((station) => {
+          uniqueByKey.set(getStationKey(station), station);
+        });
+        const normalized = Array.from(uniqueByKey.values());
+        setFavourites(normalized);
+
+        if (normalized.length !== parsed.length) {
+          await saveFavourites(normalized);
+        }
       }
     } catch (error) {
       console.error('Failed to load favourites:', error);
@@ -48,23 +64,40 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({ children
 
 
   const addFavourite = async (station: Station) => {
-    if (!favourites.some((f) => f.id === station.id)) {
-      const newFavourites = [...favourites, station];
-      setFavourites(newFavourites);
-      await saveFavourites(newFavourites);
+    const stationKey = getStationKey(station);
+    let updatedFavourites: Station[] = [];
+
+    setFavourites((prev) => {
+      if (prev.some((f) => getStationKey(f) === stationKey)) {
+        updatedFavourites = prev;
+        return prev;
+      }
+      updatedFavourites = [...prev, station];
+      return updatedFavourites;
+    });
+
+    if (updatedFavourites.length > 0) {
+      await saveFavourites(updatedFavourites);
     }
   };
 
 
-  const removeFavourite = async (stationId: string) => {
-    const newFavourites = favourites.filter((f) => f.id !== stationId);
-    setFavourites(newFavourites);
-    await saveFavourites(newFavourites);
+  const removeFavourite = async (station: Station) => {
+    const stationKey = getStationKey(station);
+    let updatedFavourites: Station[] = [];
+
+    setFavourites((prev) => {
+      updatedFavourites = prev.filter((f) => getStationKey(f) !== stationKey);
+      return updatedFavourites;
+    });
+
+    await saveFavourites(updatedFavourites);
   };
 
 
-  const isFavourite = (stationId: string) => {
-    return favourites.some((f) => f.id === stationId);
+  const isFavourite = (station: Station) => {
+    const stationKey = getStationKey(station);
+    return favourites.some((f) => getStationKey(f) === stationKey);
   };
 
 

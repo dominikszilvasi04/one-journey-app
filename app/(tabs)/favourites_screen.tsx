@@ -16,6 +16,12 @@ interface FavouriteStationWithArrivals extends Station {
   error?: string;
 }
 
+const getStationKey = (station: Station) => {
+  const baseId = station.stationCode ?? station.id;
+  const lineId = station.line ?? 'none';
+  return `${station.type}:${baseId}:${lineId}`;
+};
+
 
 export default function FavouritesScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -84,13 +90,13 @@ export default function FavouritesScreen() {
 
 
   const renderFavouriteItem = ({ item }: { item: FavouriteStationWithArrivals }) => (
-    <View key={item.id} style={styles.favouriteCard}>
+    <View style={styles.favouriteCard}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1, backgroundColor: 'transparent' }}>
           <Text style={styles.stationName}>{item.name}</Text>
           <Text style={styles.stationType}>{item.type} {item.line ? `${item.line} Line` : ''}</Text>
         </View>
-        <TouchableOpacity onPress={() => removeFavourite(item.id)} style={styles.removeButton}>
+        <TouchableOpacity onPress={() => removeFavourite(item)} style={styles.removeButton}>
           <Ionicons name="heart" size={24} color="#ff4444" />
         </TouchableOpacity>
       </View>
@@ -127,7 +133,11 @@ export default function FavouritesScreen() {
         }
       >
         {favouritesData.length > 0 ? (
-          favouritesData.map((item) => renderFavouriteItem({ item }))
+          favouritesData.map((item) => (
+            <View key={getStationKey(item)}>
+              {renderFavouriteItem({ item })}
+            </View>
+          ))
         ) : (
           <View style={styles.emptyContainer}>
             <Ionicons name="heart-outline" size={64} color="#ccc" />

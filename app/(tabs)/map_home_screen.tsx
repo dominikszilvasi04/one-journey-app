@@ -287,13 +287,13 @@ export default function MapHomeScreen() {
                   <Text style={styles.stationType}>{selectedStation.type} {selectedStation.line ? `${selectedStation.line} Line` : ''}</Text>
                 </View>
                 <TouchableOpacity 
-                  onPress={() => isFavourite(selectedStation.id) ? removeFavourite(selectedStation.id) : addFavourite(selectedStation.id)}
+                  onPress={() => isFavourite(selectedStation) ? removeFavourite(selectedStation) : addFavourite(selectedStation)}
                   style={styles.favouriteButton}
                 >
                   <Ionicons 
-                    name={isFavourite(selectedStation.id) ? "heart" : "heart-outline"} 
+                    name={isFavourite(selectedStation) ? "heart" : "heart-outline"} 
                     size={28} 
-                    color={isFavourite(selectedStation.id) ? "#ff4444" : mutedTextColor} 
+                    color={isFavourite(selectedStation) ? "#ff4444" : mutedTextColor} 
                   />
                 </TouchableOpacity>
               </View>
