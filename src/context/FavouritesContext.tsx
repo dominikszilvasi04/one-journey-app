@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Station } from "../types/transport_types";
+import { getStationKey, deduplicateStations } from "../utils/stationIdentity";
 
 interface FavouritesContextType {
   favourites: Station[];
@@ -20,12 +21,6 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(
 );
 
 const STORAGE_KEY = "@one_journey_favourites";
-
-const getStationKey = (station: Station) => {
-  const baseId = station.stationCode ?? station.id;
-  const lineId = station.line ?? "none";
-  return `${station.type}:${baseId}:${lineId}`;
-};
 
 export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -41,15 +36,11 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as Station[];
-        const uniqueByKey = new Map<string, Station>();
-        parsed.forEach((station) => {
-          uniqueByKey.set(getStationKey(station), station);
-        });
-        const normalized = Array.from(uniqueByKey.values());
-        setFavourites(normalized);
+        const normalised = deduplicateStations(parsed);
+        setFavourites(normalised);
 
-        if (normalized.length !== parsed.length) {
-          await saveFavourites(normalized);
+        if (normalised.length !== parsed.length) {
+          await saveFavourites(normalised);
         }
       }
     } catch (error) {
@@ -69,12 +60,12 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
     const stationKey = getStationKey(station);
     let updatedFavourites: Station[] = [];
 
-    setFavourites((prev) => {
-      if (prev.some((f) => getStationKey(f) === stationKey)) {
-        updatedFavourites = prev;
-        return prev;
+    setFavourites((previousFavourites) => {
+      if (previousFavourites.some((favourite) => getStationKey(favourite) === stationKey)) {
+        updatedFavourites = previousFavourites;
+        return previousFavourites;
       }
-      updatedFavourites = [...prev, station];
+      updatedFavourites = [...previousFavourites, station];
       return updatedFavourites;
     });
 
@@ -87,8 +78,10 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
     const stationKey = getStationKey(station);
     let updatedFavourites: Station[] = [];
 
-    setFavourites((prev) => {
-      updatedFavourites = prev.filter((f) => getStationKey(f) !== stationKey);
+    setFavourites((previousFavourites) => {
+      updatedFavourites = previousFavourites.filter(
+        (favourite) => getStationKey(favourite) !== stationKey
+      );
       return updatedFavourites;
     });
 
@@ -97,7 +90,7 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
 
   const isFavourite = (station: Station) => {
     const stationKey = getStationKey(station);
-    return favourites.some((f) => getStationKey(f) === stationKey);
+    return favourites.some((favourite) => getStationKey(favourite) === stationKey);
   };
 
   return (

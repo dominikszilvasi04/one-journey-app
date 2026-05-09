@@ -1,12 +1,11 @@
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
-import { fetchIrishRailForecast } from "@/src/api/irish_rail_service";
-import { fetchLuasForecast } from "@/src/api/luas_forecast_service";
 import { useFavourites } from "@/src/context/FavouritesContext";
-import { Arrival, Station } from "@/src/types/transport_types";
+import { useFavouritesArrivals } from "@/src/hooks/useFavouritesArrivals";
+import { getStationKey } from "@/src/utils/stationIdentity";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -15,88 +14,20 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-interface FavouriteStationWithArrivals extends Station {
-  arrivals: Arrival[];
-  isLoading: boolean;
-  error?: string;
-}
-
-const getStationKey = (station: Station) => {
-  const baseId = station.stationCode ?? station.id;
-  const lineId = station.line ?? "none";
-  return `${station.type}:${baseId}:${lineId}`;
-};
-
 export default function FavouritesScreen() {
-  const colorScheme = useColorScheme() ?? "light";
-  const isDark = colorScheme === "dark";
-  const palette = Colors[colorScheme];
+  const colourScheme = useColorScheme() ?? "light";
+  const isDark = colourScheme === "dark";
+  const palette = Colors[colourScheme];
   const styles = createStyles(isDark, palette);
   const { favourites, removeFavourite } = useFavourites();
-  const [favouritesData, setFavouritesData] = useState<
-    FavouriteStationWithArrivals[]
-  >([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const fetchArrivalsForStation = useCallback(
-    async (station: Station): Promise<Arrival[]> => {
-      try {
-        return station.type === "Luas"
-          ? await fetchLuasForecast(station.id)
-          : await fetchIrishRailForecast(station.id);
-      } catch (error) {
-        console.error(`Failed to fetch arrivals for ${station.name}:`, error);
-        throw error;
-      }
-    },
-    [],
-  );
-
-  const loadAllArrivals = useCallback(async () => {
-    const initialData: FavouriteStationWithArrivals[] = favourites.map((f) => ({
-      ...f,
-      arrivals: [],
-      isLoading: true,
-    }));
-    setFavouritesData(initialData);
-
-    const updatedData = await Promise.all(
-      favourites.map(async (station) => {
-        try {
-          const arrivals = await fetchArrivalsForStation(station);
-          return {
-            ...station,
-            arrivals: arrivals.slice(0, 3), // Only show top 3
-            isLoading: false,
-          };
-        } catch (error) {
-          return {
-            ...station,
-            arrivals: [],
-            isLoading: false,
-            error: "Failed to load",
-          };
-        }
-      }),
-    );
-    setFavouritesData(updatedData);
-  }, [favourites, fetchArrivalsForStation]);
+  const { favouritesData, isRefreshing, onRefresh, loadAllArrivals } =
+    useFavouritesArrivals(favourites);
 
   useEffect(() => {
     loadAllArrivals();
   }, [loadAllArrivals]);
 
-  const onRefresh = async () => {
-    setIsRefreshing(true);
-    await loadAllArrivals();
-    setIsRefreshing(false);
-  };
-
-  const renderFavouriteItem = ({
-    item,
-  }: {
-    item: FavouriteStationWithArrivals;
-  }) => (
+  const renderFavouriteItem = (item: typeof favouritesData[0]) => (
     <View style={styles.favouriteCard}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
@@ -109,7 +40,7 @@ export default function FavouritesScreen() {
           onPress={() => removeFavourite(item)}
           style={styles.removeButton}
         >
-          <Ionicons name="heart" size={24} color="#ff4444" />
+          <Ionicons name="heart" size={24} colour="#ff4444" />
         </TouchableOpacity>
       </View>
 
@@ -119,21 +50,23 @@ export default function FavouritesScreen() {
         <Text style={styles.errorText}>{item.error}</Text>
       ) : item.arrivals.length > 0 ? (
         <View style={styles.arrivalsContainer}>
-          {item.arrivals.map((arrival, index) => (
-            <View
-              key={`${arrival.destination}-${index}`}
-              style={styles.arrivalRow}
-            >
-              <Text style={styles.destinationText} numberOfLines={1}>
-                {arrival.destination}
-              </Text>
-              <Text style={styles.minutesText}>
-                {arrival.minutesToDeparture === 0
-                  ? "Due"
-                  : `${arrival.minutesToDeparture} min`}
-              </Text>
-            </View>
-          ))}
+          {item.arrivals.map((section) =>
+            section.data.map((arrival, index) => (
+              <View
+                key={`${arrival.destination}-${index}`}
+                style={styles.arrivalRow}
+              >
+                <Text style={styles.destinationText} numberOfLines={1}>
+                  {arrival.destination}
+                </Text>
+                <Text style={styles.minutesText}>
+                  {arrival.minutesToDeparture === 0
+                    ? "Due"
+                    : `${arrival.minutesToDeparture} min`}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       ) : (
         <Text style={styles.emptyArrivals}>No upcoming arrivals</Text>
@@ -156,12 +89,12 @@ export default function FavouritesScreen() {
         {favouritesData.length > 0 ? (
           favouritesData.map((item) => (
             <View key={getStationKey(item)} style={styles.cardWrapper}>
-              {renderFavouriteItem({ item })}
+              {renderFavouriteItem(item)}
             </View>
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Ionicons name="heart-outline" size={64} color="#ccc" />
+            <Ionicons name="heart-outline" size={64} colour="#ccc" />
             <Text style={styles.emptyTitle}>No Favourites Yet</Text>
             <Text style={styles.emptySubtitle}>
               Tap the heart icon on any station to add it here for quick access.
@@ -175,7 +108,6 @@ export default function FavouritesScreen() {
 function createStyles(isDark: boolean, palette: typeof Colors.light) {
   const page = isDark ? "#0c1016" : "#f5f7fb";
   const card = isDark ? "#151b24" : "#ffffff";
-  const inner = isDark ? "#1d2430" : "#f2f5f9";
   const border = isDark ? "#283041" : "#dfe5ee";
   const muted = isDark ? "#b4bcc9" : "#667085";
   const textSoft = isDark ? "#e4e9f0" : "#344054";

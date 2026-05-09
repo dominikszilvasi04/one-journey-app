@@ -3,15 +3,12 @@ import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import {
   fetchAllIrishRailStations,
-  fetchIrishRailForecast,
 } from "@/src/api/irish_rail_service";
 import {
   fetchAllLuasStops,
-  fetchLuasForecast,
 } from "@/src/api/luas_forecast_service";
-import * as Routes from "@/src/constants/transport_routes";
 import { useFavourites } from "@/src/context/FavouritesContext";
-import { Arrival, Station } from "@/src/types/transport_types";
+import { Station } from "@/src/types/transport_types";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Location from "expo-location";
@@ -25,27 +22,16 @@ import {
 } from "react-native";
 import MapView, { Marker, PROVIDER_DEFAULT, Polyline } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-interface ArrivalSection {
-  title: string;
-  data: Arrival[];
-}
-
-interface TransportRoute {
-  id: string;
-  name: string;
-  color: string;
-  branches: string[][];
-  type: "Luas" | "Train" | "DART";
-}
+import { getAllTransportRoutes, getBranchCoordinates as getUtilBranchCoordinates, TransportRoute } from "@/src/utils/transportRoutes";
+import { fetchAndGroupArrivals } from "@/src/utils/arrivals";
 
 type FilterType = "All" | "Luas" | "Train" | string;
 
 export default function MapHomeScreen() {
-  const colorScheme = useColorScheme() ?? "light";
-  const isDark = colorScheme === "dark";
-  const palette = Colors[colorScheme];
-  const mutedTextColor = isDark ? "#b7becb" : "#666666";
+  const colourScheme = useColorScheme() ?? "light";
+  const isDark = colourScheme === "dark";
+  const palette = Colors[colourScheme];
+  const mutedTextColour = isDark ? "#b7becb" : "#666666";
   const styles = useMemo(
     () => createStyles(isDark, palette),
     [isDark, palette],
@@ -55,7 +41,7 @@ export default function MapHomeScreen() {
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [arrivals, setArrivals] = useState<ArrivalSection[]>([]);
+  const [arrivals, setArrivals] = useState<any[]>([]);
   const [isFetchingArrivals, setIsFetchingArrivals] = useState<boolean>(false);
   const [activeRouteIds, setActiveRouteIds] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<FilterType>("All");
@@ -68,53 +54,7 @@ export default function MapHomeScreen() {
   const insets = useSafeAreaInsets();
   const { isFavourite, addFavourite, removeFavourite } = useFavourites();
   const snapPoints = useMemo(() => ["10%", "50%", "90%"], []);
-  const transportRoutes = useMemo(
-    (): TransportRoute[] => [
-      {
-        id: "Luas-Red",
-        name: "Luas Red Line",
-        color: "#e60000",
-        branches: Routes.LUAS_RED_LINE,
-        type: "Luas",
-      },
-      {
-        id: "Luas-Green",
-        name: "Luas Green Line",
-        color: "#00b300",
-        branches: Routes.LUAS_GREEN_LINE,
-        type: "Luas",
-      },
-      {
-        id: "DART",
-        name: "DART",
-        color: "#00cc00",
-        branches: Routes.DART_LINE,
-        type: "DART",
-      },
-      {
-        id: "Maynooth",
-        name: "Maynooth Commuter",
-        color: "#ff8c00",
-        branches: Routes.MAYNOOTH_LINE,
-        type: "Train",
-      },
-      {
-        id: "M3-Parkway",
-        name: "M3 Parkway",
-        color: "#9932cc",
-        branches: Routes.M3_PARKWAY_LINE,
-        type: "Train",
-      },
-      {
-        id: "Northern",
-        name: "Northern Commuter",
-        color: "#1e90ff",
-        branches: Routes.NORTHERN_COMMUTER,
-        type: "Train",
-      },
-    ],
-    [],
-  );
+  const transportRoutes = useMemo(() => getAllTransportRoutes(), []);
   useEffect(() => {
     const initialiseMapData = async () => {
       try {
@@ -141,36 +81,17 @@ export default function MapHomeScreen() {
       setSelectedStation(station);
       setArrivals([]);
       setIsFetchingArrivals(true);
-      const code = station.stationCode || station.id;
+      const stationCode = station.stationCode || station.id;
       const activeIds = transportRoutes
         .filter((route) =>
-          route.branches.some((branch) => branch.includes(code)),
+          route.branches.some((branch) => branch.includes(stationCode)),
         )
         .map((route) => route.id);
       setActiveRouteIds(activeIds);
       bottomSheetReference.current?.snapToIndex(1);
       try {
-        const fetchedArrivals =
-          station.type === "Luas"
-            ? await fetchLuasForecast(station.id)
-            : await fetchIrishRailForecast(station.id);
-        const grouped = fetchedArrivals.reduce(
-          (sections: { [key: string]: Arrival[] }, arrival) => {
-            const title = `To ${arrival.destination}`;
-            if (!sections[title]) sections[title] = [];
-            sections[title].push(arrival);
-            return sections;
-          },
-          {},
-        );
-        setArrivals(
-          Object.keys(grouped).map((title) => ({
-            title,
-            data: grouped[title].sort(
-              (a, b) => a.minutesToDeparture - b.minutesToDeparture,
-            ),
-          })),
-        );
+        const sections = await fetchAndGroupArrivals(station);
+        setArrivals(sections);
       } catch (error) {
         console.error(error);
       } finally {
@@ -180,58 +101,42 @@ export default function MapHomeScreen() {
     [transportRoutes],
   );
   const getBranchCoordinates = (routeId: string, branch: string[]) => {
-    const coords = branch
-      .map((code) =>
-        stations.find(
-          (station) => station.stationCode === code || station.id === code,
-        ),
-      )
-      .filter((station): station is Station => !!station)
-      .map((station) => ({
-        latitude: station.latitude,
-        longitude: station.longitude,
-      }));
-    if (
-      routeId === "M3-Parkway" &&
-      branch.includes("BBRDG") &&
-      branch.includes("DCKLS")
-    ) {
-      const broombridgeIndex = branch.indexOf("BBRDG");
-      const docklandsIndex = branch.indexOf("DCKLS");
-      if (broombridgeIndex !== -1 && docklandsIndex !== -1) {
-        coords.splice(
-          broombridgeIndex + 1,
-          0,
-          Routes.DOCKLANDS_ROUTING_WAYPOINT,
-        );
-      }
-    }
-    return coords;
+    return getUtilBranchCoordinates(routeId, branch, stations);
   };
+  const getRouteStrokeWidth = (routeId: string) =>
+    activeRouteIds.includes(routeId) ? 6 : 3;
+
+  const getRouteDashPattern = (routeId: string, coordinatesLength: number) => {
+    if (activeRouteIds.includes(routeId) || coordinatesLength < 2) {
+      return undefined;
+    }
+    return [10, 8];
+  };
+
   const filteredRoutes = useMemo(() => {
     let baseRoutes = transportRoutes;
     if (currentFilter === "Luas") {
-      baseRoutes = transportRoutes.filter((r) => r.type === "Luas");
+      baseRoutes = transportRoutes.filter((route) => route.type === "Luas");
     } else if (currentFilter === "Train") {
       baseRoutes = transportRoutes.filter(
-        (r) => r.type === "Train" || r.type === "DART",
+        (route) => route.type === "Train" || route.type === "DART",
       );
     } else if (currentFilter !== "All") {
-      baseRoutes = transportRoutes.filter((r) => r.id === currentFilter);
+      baseRoutes = transportRoutes.filter((route) => route.id === currentFilter);
     }
 
     if (selectedLineIds.length === 0 || currentFilter !== "All") {
       return baseRoutes;
     }
 
-    return baseRoutes.filter((r) => selectedLineIds.includes(r.id));
+    return baseRoutes.filter((route) => selectedLineIds.includes(route.id));
   }, [currentFilter, selectedLineIds, transportRoutes]);
 
   const toggleLineSelection = useCallback((lineId: string) => {
-    setSelectedLineIds((prev) =>
-      prev.includes(lineId)
-        ? prev.filter((id) => id !== lineId)
-        : [...prev, lineId],
+    setSelectedLineIds((previousLineIds) =>
+      previousLineIds.includes(lineId)
+        ? previousLineIds.filter((id) => id !== lineId)
+        : [...previousLineIds, lineId],
     );
   }, []);
 
@@ -288,16 +193,23 @@ export default function MapHomeScreen() {
       >
         {filteredRoutes.map((route) =>
           route.branches.map((branch, index) => (
-            <Polyline
-              key={`${route.id}-${index}`}
-              coordinates={getBranchCoordinates(route.id, branch)}
-              strokeColor={route.color}
-              strokeWidth={activeRouteIds.includes(route.id) ? 6 : 2}
-              lineDashPattern={
-                activeRouteIds.includes(route.id) ? undefined : [5, 5]
+            (() => {
+              const coordinates = getBranchCoordinates(route.id, branch);
+              if (coordinates.length < 2) {
+                return null;
               }
-              zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
-            />
+
+              return (
+                <Polyline
+                  key={`${route.id}-${index}`}
+                  coordinates={coordinates}
+                  strokeColor={route.colour}
+                  strokeWidth={getRouteStrokeWidth(route.id)}
+                  lineDashPattern={getRouteDashPattern(route.id, coordinates.length)}
+                  zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
+                />
+              );
+            })()
           )),
         )}
         {filteredStations.map((station: Station) => (
@@ -423,7 +335,7 @@ export default function MapHomeScreen() {
                   onPress={() => toggleLineSelection(route.id)}
                 >
                   <View
-                    style={[styles.routeDot, { backgroundColor: route.color }]}
+                    style={[styles.routeDot, { backgroundColor: route.colour }]}
                   />
                   <Text
                     style={[styles.filterText, selected && styles.activeFilter]}
@@ -433,7 +345,7 @@ export default function MapHomeScreen() {
                   <Ionicons
                     name={selected ? "checkmark-circle" : "ellipse-outline"}
                     size={20}
-                    color={selected ? palette.tint : mutedTextColor}
+                    colour={selected ? palette.tint : mutedTextColour}
                   />
                 </TouchableOpacity>
               );
@@ -473,8 +385,8 @@ export default function MapHomeScreen() {
                       isFavourite(selectedStation) ? "heart" : "heart-outline"
                     }
                     size={28}
-                    color={
-                      isFavourite(selectedStation) ? "#ff4444" : mutedTextColor
+                    colour={
+                      isFavourite(selectedStation) ? "#ff4444" : mutedTextColour
                     }
                   />
                 </TouchableOpacity>
