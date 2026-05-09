@@ -32,3 +32,8 @@ export const DOCKLANDS_ROUTING_WAYPOINT = { latitude: 53.3582, longitude: -6.248
 export const NORTHERN_COMMUTER = [
   ['DDALK', 'DGHDA', 'LTOWN', 'GSTON', 'BBRGN', 'SKRES', 'RLUSK', 'DBATE', 'MHIDE', 'PMNCK', 'GRGRD', 'HWTHJ', 'KBRCK', 'RAHNY', 'HTOWN', 'KLSTR', 'CTARF', 'CNLLY', 'TARA', 'PERSE']
 ];
+
+
+export const CONNOLLY_HAZELHATCH_LINE = [
+  ['CNLLY', 'HEU', 'PKWT', 'CLON', 'KISH', 'ADAM', 'HAZL']
+];

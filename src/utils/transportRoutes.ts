@@ -113,4 +113,11 @@ export const getAllTransportRoutes = (): TransportRoute[] => [
     branches: RoutesConstant.NORTHERN_COMMUTER,
     type: "Train",
   },
+  {
+    id: "Connolly-Hazelhatch",
+    name: "Connolly to Hazelhatch",
+    colour: "#0066ff",
+    branches: RoutesConstant.CONNOLLY_HAZELHATCH_LINE,
+    type: "Train",
+  },
 ];
