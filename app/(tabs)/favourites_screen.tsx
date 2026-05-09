@@ -8,11 +8,11 @@ import { Arrival, Station } from "@/src/types/transport_types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 
 interface FavouriteStationWithArrivals extends Station {
@@ -192,6 +192,7 @@ function createStyles(isDark: boolean, palette: typeof Colors.light) {
     },
     cardWrapper: {
       marginBottom: 16,
+      backgroundColor: "transparent",
     },
     favouriteCard: {
       backgroundColor: card,
