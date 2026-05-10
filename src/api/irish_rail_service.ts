@@ -23,7 +23,7 @@ export const fetchAllIrishRailStations = async (): Promise<Station[]> => {
     const stationsData = Array.isArray(rawStations) ? rawStations : [rawStations];
     return stationsData.map((station: any): Station => ({
       id: station.StationCode.trim(),
-      name: station.StationDesc,
+      name: station.StationDesc.trim(),
       latitude: parseFloat(station.StationLatitude),
       longitude: parseFloat(station.StationLongitude),
       type: station.StationDesc.toLowerCase().includes('dart') ? 'DART' : 'Train',

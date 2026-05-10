@@ -1,5 +1,5 @@
-import { Station } from "../types/transport_types";
 import * as RoutesConstant from "../constants/transport_routes";
+import { Station } from "../types/transport_types";
 
 export interface TransportRoute {
   id: string;
@@ -25,25 +25,32 @@ export const getRouteColour = (type: "Luas" | "Train" | "DART"): string => {
 
 export const filterRoutesByLineIdentifiers = (
   allRoutes: TransportRoute[],
-  selectedLineIdentifiers: string[]
+  selectedLineIdentifiers: string[],
 ): TransportRoute[] => {
   if (selectedLineIdentifiers.length === 0) {
     return allRoutes;
   }
-  return allRoutes.filter((route) => selectedLineIdentifiers.includes(route.id));
+  return allRoutes.filter((route) =>
+    selectedLineIdentifiers.includes(route.id),
+  );
 };
 
 export const getBranchCoordinates = (
   routeId: string,
   branch: string[],
-  stations: Station[]
+  stations: Station[],
 ): RouteCoordinates[] => {
   const coordinates = branch
-    .map((code) =>
-      stations.find(
-        (station) => station.stationCode === code || station.id === code
-      )
-    )
+    .map((code) => {
+      const trimmedCode = code.trim();
+      // Prefer exact stationCode match to avoid ambiguity with duplicate station names
+      let station = stations.find((s) => s.stationCode === trimmedCode);
+      // Fall back to ID match only if stationCode not found
+      if (!station) {
+        station = stations.find((s) => s.id === trimmedCode);
+      }
+      return station;
+    })
     .filter((station): station is Station => !!station)
     .map((station) => ({
       latitude: station.latitude,
@@ -62,7 +69,7 @@ export const getBranchCoordinates = (
       coordinates.splice(
         broombridgeIndex + 1,
         0,
-        RoutesConstant.DOCKLANDS_ROUTING_WAYPOINT
+        RoutesConstant.DOCKLANDS_ROUTING_WAYPOINT,
       );
     }
   }
