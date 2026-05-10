@@ -169,5 +169,5 @@ export const NORTHERN_COMMUTER = [
 ];
 
 export const CONNOLLY_HAZELHATCH_LINE = [
-  ["CNLLY", "HSTON", "PWESS", "CLDKN", "KISHO", "ADAMS", "HZLCH"],
+  ["CTARF", "TARA", "PWESS", "CLDKN", "KISHO", "ADAMS", "HZLCH"],
 ];
