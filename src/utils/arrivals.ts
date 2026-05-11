@@ -1,6 +1,6 @@
-import { Arrival, Station } from "../types/transport_types";
 import { fetchIrishRailForecast } from "../api/irish_rail_service";
 import { fetchLuasForecast } from "../api/luas_forecast_service";
+import { Arrival, Station } from "../types/transport_types";
 
 export interface ArrivalSection {
   title: string;
@@ -8,7 +8,7 @@ export interface ArrivalSection {
 }
 
 export const fetchArrivalsForStation = async (
-  station: Station
+  station: Station,
 ): Promise<Arrival[]> => {
   try {
     return station.type === "Luas"
@@ -21,7 +21,7 @@ export const fetchArrivalsForStation = async (
 };
 
 export const groupArrivalsByDestination = (
-  arrivals: Arrival[]
+  arrivals: Arrival[],
 ): ArrivalSection[] => {
   const grouped = arrivals.reduce(
     (sections: { [key: string]: Arrival[] }, arrival) => {
@@ -30,19 +30,19 @@ export const groupArrivalsByDestination = (
       sections[title].push(arrival);
       return sections;
     },
-    {}
+    {},
   );
 
   return Object.keys(grouped).map((title) => ({
     title,
     data: grouped[title].sort(
-      (previous, next) => previous.minutesToDeparture - next.minutesToDeparture
+      (previous, next) => previous.minutesToDeparture - next.minutesToDeparture,
     ),
   }));
 };
 
 export const fetchAndGroupArrivals = async (
-  station: Station
+  station: Station,
 ): Promise<ArrivalSection[]> => {
   const arrivals = await fetchArrivalsForStation(station);
   return groupArrivalsByDestination(arrivals);

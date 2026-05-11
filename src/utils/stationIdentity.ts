@@ -6,7 +6,10 @@ export const getStationKey = (station: Station): string => {
   return `${station.type}:${baseIdentifier}:${lineIdentifier}`;
 };
 
-export const stationsEqual = (station1: Station, station2: Station): boolean => {
+export const stationsEqual = (
+  station1: Station,
+  station2: Station,
+): boolean => {
   return getStationKey(station1) === getStationKey(station2);
 };
 
