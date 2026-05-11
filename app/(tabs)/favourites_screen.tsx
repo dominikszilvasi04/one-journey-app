@@ -27,7 +27,7 @@ export default function FavouritesScreen() {
     loadAllArrivals();
   }, [loadAllArrivals]);
 
-  const renderFavouriteItem = (item: typeof favouritesData[0]) => (
+  const renderFavouriteItem = (item: (typeof favouritesData)[0]) => (
     <View style={styles.favouriteCard}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
@@ -65,7 +65,7 @@ export default function FavouritesScreen() {
                     : `${arrival.minutesToDeparture} min`}
                 </Text>
               </View>
-            ))
+            )),
           )}
         </View>
       ) : (

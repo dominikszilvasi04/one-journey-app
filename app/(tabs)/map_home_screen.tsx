@@ -1,14 +1,15 @@
 import { Text, View } from "@/components/Themed";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
-import {
-  fetchAllIrishRailStations,
-} from "@/src/api/irish_rail_service";
-import {
-  fetchAllLuasStops,
-} from "@/src/api/luas_forecast_service";
+import { fetchAllIrishRailStations } from "@/src/api/irish_rail_service";
+import { fetchAllLuasStops } from "@/src/api/luas_forecast_service";
 import { useFavourites } from "@/src/context/FavouritesContext";
 import { Station } from "@/src/types/transport_types";
+import { fetchAndGroupArrivals } from "@/src/utils/arrivals";
+import {
+  getAllTransportRoutes,
+  getBranchCoordinates as getUtilBranchCoordinates
+} from "@/src/utils/transportRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Location from "expo-location";
@@ -20,10 +21,8 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getAllTransportRoutes, getBranchCoordinates as getUtilBranchCoordinates, TransportRoute } from "@/src/utils/transportRoutes";
-import { fetchAndGroupArrivals } from "@/src/utils/arrivals";
 
 type FilterType = "All" | "Luas" | "Train" | string;
 
@@ -122,7 +121,9 @@ export default function MapHomeScreen() {
         (route) => route.type === "Train" || route.type === "DART",
       );
     } else if (currentFilter !== "All") {
-      baseRoutes = transportRoutes.filter((route) => route.id === currentFilter);
+      baseRoutes = transportRoutes.filter(
+        (route) => route.id === currentFilter,
+      );
     }
 
     if (selectedLineIds.length === 0 || currentFilter !== "All") {
@@ -192,7 +193,7 @@ export default function MapHomeScreen() {
         showsUserLocation={true}
       >
         {filteredRoutes.map((route) =>
-          route.branches.map((branch, index) => (
+          route.branches.map((branch, index) =>
             (() => {
               const coordinates = getBranchCoordinates(route.id, branch);
               if (coordinates.length < 2) {
@@ -205,12 +206,15 @@ export default function MapHomeScreen() {
                   coordinates={coordinates}
                   strokeColor={route.colour}
                   strokeWidth={getRouteStrokeWidth(route.id)}
-                  lineDashPattern={getRouteDashPattern(route.id, coordinates.length)}
+                  lineDashPattern={getRouteDashPattern(
+                    route.id,
+                    coordinates.length,
+                  )}
                   zIndex={activeRouteIds.includes(route.id) ? 10 : 1}
                 />
               );
-            })()
-          )),
+            })(),
+          ),
         )}
         {filteredStations.map((station: Station) => (
           <Marker
