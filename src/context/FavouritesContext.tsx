@@ -1,13 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useState,
 } from "react";
 import { Station } from "../types/transport_types";
-import { getStationKey, deduplicateStations } from "../utils/stationIdentity";
+import { deduplicateStations, getStationKey } from "../utils/stationIdentity";
 
 interface FavouritesContextType {
   favourites: Station[];
@@ -61,7 +61,11 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
     let updatedFavourites: Station[] = [];
 
     setFavourites((previousFavourites) => {
-      if (previousFavourites.some((favourite) => getStationKey(favourite) === stationKey)) {
+      if (
+        previousFavourites.some(
+          (favourite) => getStationKey(favourite) === stationKey,
+        )
+      ) {
         updatedFavourites = previousFavourites;
         return previousFavourites;
       }
@@ -80,7 +84,7 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
 
     setFavourites((previousFavourites) => {
       updatedFavourites = previousFavourites.filter(
-        (favourite) => getStationKey(favourite) !== stationKey
+        (favourite) => getStationKey(favourite) !== stationKey,
       );
       return updatedFavourites;
     });
@@ -90,7 +94,9 @@ export const FavouritesProvider: React.FC<{ children: ReactNode }> = ({
 
   const isFavourite = (station: Station) => {
     const stationKey = getStationKey(station);
-    return favourites.some((favourite) => getStationKey(favourite) === stationKey);
+    return favourites.some(
+      (favourite) => getStationKey(favourite) === stationKey,
+    );
   };
 
   return (

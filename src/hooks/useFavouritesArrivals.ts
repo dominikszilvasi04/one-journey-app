@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { Station } from "../types/transport_types";
-import { fetchArrivalsForStation, ArrivalSection, groupArrivalsByDestination } from "../utils/arrivals";
+import {
+    ArrivalSection,
+    fetchArrivalsForStation,
+    groupArrivalsByDestination,
+} from "../utils/arrivals";
 
 interface FavouriteStationWithArrivals extends Station {
   arrivals: ArrivalSection[];
@@ -20,7 +24,7 @@ export const useFavouritesArrivals = (favourites: Station[]) => {
         ...favourite,
         arrivals: [],
         isLoading: true,
-      })
+      }),
     );
     setFavouritesData(initialData);
 
@@ -43,7 +47,7 @@ export const useFavouritesArrivals = (favourites: Station[]) => {
             error: "Failed to load",
           };
         }
-      })
+      }),
     );
     setFavouritesData(updatedData);
   }, [favourites]);
